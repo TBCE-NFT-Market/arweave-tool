@@ -8,15 +8,10 @@ import { ColorModeScript } from "@chakra-ui/react";
 
 ReactDOM.render(
   <React.StrictMode>
-    {/* <MoralisProvider
-      serverUrl="https://ggm3aiqacseo.usemoralis.com:2053/server"
-      appId="I0EFxtLRi1UUla4kCbaJ5ZsiLgiHFjpfXEvz1H6Y"
-    > */}
     <ChakraProvider theme={theme}>
       <ColorModeScript initialColorMode={theme.config.initialColorMode} />
       <App />
     </ChakraProvider>
-    {/* </MoralisProvider> */}
   </React.StrictMode>,
   document.getElementById("root")
 );

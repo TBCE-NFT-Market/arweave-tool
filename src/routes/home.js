@@ -5,7 +5,6 @@ import {
   Input,
   Text,
   Link,
-  Badge,
   Image,
   HStack,
   InputGroup,
@@ -37,8 +36,6 @@ import {
 
 const arweave = Arweave.init({});
 
-let currentNonce = 0;
-
 function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [privateKey, setPrivateKey] = useState("");
@@ -54,6 +51,36 @@ function Home() {
   const toast = useToast();
   const host = "arweave.net:443";
 
+  function showToastSuccess() {
+    toast({
+      title: "ARWeave Tools ",
+      description: `Transaction was sent succesfully!`,
+      status: "success",
+      duration: 3000,
+      isClosable: true,
+    });
+  }
+
+  function showToastError(e) {
+    toast({
+      title: "Transaction confirmation failed ",
+      description: e,
+      status: "error",
+      duration: 3000,
+      isClosable: true,
+    });
+  }
+
+  function showToastCreated() {
+    toast({
+      title: "ARWeave Tools ",
+      description: `Transaction was created. Sending via ${host}...`,
+      status: "info",
+      duration: 1300,
+      isClosable: true,
+    });
+  }
+
   async function handleSendPlaintext() {
     setIsUploading(true);
     const key = globals.arweave.key;
@@ -67,17 +94,8 @@ function Home() {
     try {
       await arweave.transactions.sign(tx, key);
       let uploader = await arweave.transactions.getUploader(tx);
-
-      toast({
-        title: "ARWeave Tools ",
-        description: `Transaction was created. Sending via ${host}...`,
-        status: "info",
-        duration: 1300,
-        isClosable: true,
-      });
-
-      console.log("TX: " + tx);
-
+      showToastCreated();
+      console.log("TX Created: " + tx);
       while (!uploader.isComplete) {
         await uploader.uploadChunk();
         console.log(
@@ -86,56 +104,32 @@ function Home() {
       }
 
       const response = await arweave.transactions.post(tx);
-
-      if (response.status == 200) {
-        toast({
-          title: "ARWeave Tools ",
-          description: `Transaction was sent succesfully!`,
-          status: "success",
-          duration: 1300,
-          isClosable: true,
-        });
+      if (response.status === 200) {
+        showToastSuccess();
         setUploadedLinks((arr) => [{ id: tx.id, name: "Plaintext" }, ...arr]);
         setIsUploading(false);
       }
     } catch (e) {
       setIsUploading(false);
-      toast({
-        title: "Transaction confirmation failed ",
-        description: e,
-        status: "error",
-        duration: 1300,
-        isClosable: true,
-      });
+      showToastError(e);
     }
   }
 
   async function handleSendFile() {
     const key = globals.arweave.key;
 
-    toast({
-      title: "ARWeave Tools ",
-      description: `Transaction was created. Sending via ${host}...`,
-      status: "info",
-      duration: 1300,
-      isClosable: true,
-    });
-
+    showToastCreated();
     setIsFileUploading(true);
 
     try {
       for (var i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
-        console.log(file);
         const reader = new FileReader();
         reader.readAsText(file);
         reader.onload = async () => {
           let data = reader.result;
-
           let tx = await arweave.createTransaction({ data: data }, key);
           tx.addTag("Content-Type", file.type);
-
-          console.log(tx);
 
           await arweave.transactions.sign(tx, key);
 
@@ -150,33 +144,16 @@ function Home() {
           }
 
           const response = await arweave.transactions.post(tx);
-
-          if (response.status == 200) {
-            toast({
-              title: "ARWeave Tools ",
-              description: `Transaction was sent succesfully!`,
-              status: "success",
-              duration: 1300,
-              isClosable: true,
-            });
-            setUploadedLinks((arr) => [
-              { id: tx.id, name: file.name },
-              ,
-              ...arr,
-            ]);
+          if (response.status === 200) {
+            showToastSuccess();
+            setUploadedLinks((arr) => [{ id: tx.id, name: file.name }, ...arr]);
             setIsFileUploading(false);
           }
         };
       }
     } catch (e) {
       setIsFileUploading(false);
-      toast({
-        title: "Transaction confirmation failed ",
-        description: e,
-        status: "error",
-        duration: 1300,
-        isClosable: true,
-      });
+      showToastError(e);
     }
   }
 
@@ -208,7 +185,7 @@ function Home() {
     });
   }
 
-  const UnauthenticatedLoginPrompt = ({}) => {
+  const UnauthenticatedLoginPrompt = () => {
     return (
       <Center minH="3xl">
         <Box mt="10">
@@ -272,7 +249,7 @@ function Home() {
 
   useEffect(() => {
     if (address !== "") setAddress(getWalletFromPrivateKey());
-  });
+  }, [address]);
 
   if (!isAuthenticated) {
     return <UnauthenticatedLoginPrompt />;
