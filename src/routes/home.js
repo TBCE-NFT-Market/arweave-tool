@@ -16,6 +16,7 @@ import {
   InputRightElement,
   Stack,
   Box,
+  Textarea,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import { ExternalLinkIcon } from "@chakra-ui/icons";
@@ -48,8 +49,15 @@ function Home() {
   const [isFileUploading, setIsFileUploading] = useState(false);
   const [fileUploadProgress, setFileUploadProgress] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState(null);
+  const [inputPrivateKey, setInputPrivateKey] = useState("");
+
   const toast = useToast();
   const host = "arweave.net:443";
+
+  useEffect(() => {
+    if (inputPrivateKey === "") setButtonDisabled(true);
+    else setButtonDisabled(false);
+  }, [inputPrivateKey]);
 
   function showToastSuccess() {
     toast({
@@ -171,12 +179,22 @@ function Home() {
   }
 
   function generateWallet() {
-    arweave.wallets.generate().then((key) => {
+    arweave.wallets.generate().then(async (key) => {
       console.log(key);
       globals.arweave.key = key;
       globals.arweave.pkey = key.p;
+      globals.arweave.address = await arweave.wallets.jwkToAddress(key);
       setSession(key);
     });
+  }
+
+  async function loginWithPrivateKey() {
+    const clipboard = await navigator.clipboard.readText();
+    const key = JSON.parse(clipboard);
+    globals.arweave.key = key;
+    globals.arweave.pkey = key.p;
+    globals.arweave.address = await arweave.wallets.jwkToAddress(key);
+    setSession(key);
   }
 
   function getWalletFromPrivateKey() {
@@ -196,25 +214,22 @@ function Home() {
             </Text>
           </Heading>
           <Stack spacing={3}>
-            <InputGroup>
-              <InputRightElement></InputRightElement>
-              <Input
-                onChange={(e) => {
-                  if (e.target.value !== "") setButtonDisabled(false);
-                  else setButtonDisabled(true);
-                }}
-                defaultValue={privateKey}
-                placeholder="Private key"
-                left
-              />
-            </InputGroup>
+            {/* <Textarea
+              onChange={(e) => {
+                setInputPrivateKey(e.target.value);
+              }}
+              value={inputPrivateKey}
+              placeholder="Private key"
+            /> */}
             <Button
               bg="gray.600"
-              isDisabled={buttonDisabled}
               color="white"
               leftIcon={<FontAwesomeIcon icon={faHandshake} />}
+              onClick={() => {
+                loginWithPrivateKey();
+              }}
             >
-              Login to ARWeave network using private key
+              Login to ARWeave network using private key from clipboard
             </Button>
             <Button
               leftIcon={<FontAwesomeIcon icon={faWallet} />}
@@ -342,7 +357,7 @@ function Home() {
           </FormControl>
           <FormControl>
             <FormLabel htmlFor="email">Wallet address</FormLabel>
-            <Input disabled value="N/A" type="text" />
+            <Input disabled value={globals.arweave.address} type="text" />
           </FormControl>
           <FormLabel>Plain-text upload</FormLabel>
         </Stack>
