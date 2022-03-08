@@ -7,20 +7,27 @@ import {
   Link,
   Image,
   HStack,
-  InputGroup,
   Heading,
   Flex,
   FormControl,
   FormLabel,
   FormHelperText,
-  InputRightElement,
   Stack,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  ModalFooter,
   Box,
   Textarea,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import { ExternalLinkIcon } from "@chakra-ui/icons";
 import { useToast } from "@chakra-ui/react";
+import { FileUploader } from "react-drag-drop-files";
 
 import globals from "../globals";
 import Arweave from "arweave";
@@ -28,14 +35,18 @@ import Arweave from "arweave";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCheck,
-  faHandshake,
   faWallet,
   faArrowUp,
   faTimes,
   faCopy,
+  faAngleRight,
+  faPlus,
+  faTimesCircle,
+  faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 
 const arweave = Arweave.init({});
+const mime = require("mime");
 
 function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -50,6 +61,12 @@ function Home() {
   const [fileUploadProgress, setFileUploadProgress] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState(null);
   const [inputPrivateKey, setInputPrivateKey] = useState("");
+
+  const [savedWallets, setSavedWallets] = useState(() => {
+    const saved = localStorage.getItem("ARTOOL_WALLETS");
+    if (saved) return JSON.parse(saved);
+    return null;
+  });
 
   const toast = useToast();
   const host = "arweave.net:443";
@@ -89,6 +106,148 @@ function Home() {
     });
   }
 
+  function getBalance() {
+    arweave.wallets.getBalance(globals.arweave.address).then((balance) => {
+      console.log(balance);
+      let ar = arweave.ar.winstonToAr(balance);
+      setUserBalance(ar);
+      console.log(ar);
+    });
+  }
+
+  function setSession(key) {
+    setPrivateKey(key.p);
+    setIsAuthenticated(true);
+    getBalance();
+  }
+
+  function generateWallet() {
+    arweave.wallets.generate().then(async (key) => {
+      console.log(key);
+      globals.arweave.key = key;
+      globals.arweave.pkey = key.p;
+      globals.arweave.address = await arweave.wallets.jwkToAddress(key);
+      setSession(key);
+    });
+  }
+
+  function getWalletFromPrivateKey() {
+    arweave.wallets.jwkToAddress(globals.arweave.key).then((address) => {
+      return address;
+    });
+  }
+
+  function deleteWalletNameFromLocalStorage(walletName) {
+    const currentWallets = savedWallets.wallets;
+    const newWallets = currentWallets.filter(function (value, index, arr) {
+      return value.walletName != walletName;
+    });
+
+    const object = { wallets: newWallets };
+    replaceLocalWalletStorage(object);
+    setSavedWallets(object);
+  }
+
+  function initLocalWalletStorage() {
+    const existing = localStorage.getItem("ARTOOL_WALLETS");
+    const object = {
+      wallets: [],
+    };
+    if (!existing)
+      localStorage.setItem("ARTOOL_WALLETS", JSON.stringify(object));
+  }
+
+  function replaceLocalWalletStorage(object) {
+    localStorage.setItem("ARTOOL_WALLETS", JSON.stringify(object));
+  }
+
+  const AddNewWallet = () => {
+    const { isOpen, onOpen, onClose } = useDisclosure();
+    const [file, setFile] = useState(null);
+    const [walletName, setWalletName] = useState("");
+    const handleChange = (file) => {
+      setFile(file);
+      console.log(file);
+    };
+
+    function addNewWalletToLocalStorage(file) {
+      const reader = new FileReader();
+      reader.readAsText(file);
+      reader.onload = async () => {
+        let data = reader.result;
+        const newWallet = JSON.parse(data);
+
+        initLocalWalletStorage();
+
+        const localWallets = JSON.parse(localStorage.getItem("ARTOOL_WALLETS"));
+        localWallets.wallets.push({
+          walletName: walletName,
+          walletData: JSON.stringify(newWallet),
+        });
+        replaceLocalWalletStorage(localWallets);
+
+        setSavedWallets(localWallets);
+      };
+    }
+
+    return (
+      <>
+        <Button
+          w="100%"
+          mt={2}
+          colorScheme="blue"
+          onClick={onOpen}
+          leftIcon={<FontAwesomeIcon icon={faPlus} />}
+        >
+          Add new wallet
+        </Button>
+
+        <Modal isOpen={isOpen} onClose={onClose}>
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Add a new wallet</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody pb={6}>
+              <FormControl mb={3}>
+                <FormLabel>Wallet name</FormLabel>
+                <Input
+                  value={walletName}
+                  onChange={(e) => setWalletName(e.target.value)}
+                  placeholder="Primary ARWeave wallet"
+                />
+              </FormControl>
+              <FileUploader
+                handleChange={handleChange}
+                name="file"
+                types={["JSON"]}
+              />
+            </ModalBody>
+
+            <ModalFooter>
+              <Button
+                colorScheme="blue"
+                mr={3}
+                onClick={() => {
+                  addNewWalletToLocalStorage(file);
+                }}
+              >
+                Add
+              </Button>
+              <Button onClick={onClose}>Cancel</Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+      </>
+    );
+  };
+
+  async function loginWithKeyObject(key) {
+    globals.arweave.key = key;
+    globals.arweave.pkey = key.p;
+    globals.arweave.address = await arweave.wallets.jwkToAddress(key);
+    setSession(key);
+  }
+
   async function handleSendPlaintext() {
     setIsUploading(true);
     const key = globals.arweave.key;
@@ -98,6 +257,8 @@ function Home() {
       },
       key
     );
+
+    tx.addTag("Content-Type", "text/plain");
 
     try {
       await arweave.transactions.sign(tx, key);
@@ -112,6 +273,11 @@ function Home() {
       }
 
       const response = await arweave.transactions.post(tx);
+      console.log(tx);
+      arweave.transactions.getStatus(tx.id).then((res) => {
+        console.log(res);
+      });
+      getBalance();
       if (response.status === 200) {
         showToastSuccess();
         setUploadedLinks((arr) => [{ id: tx.id, name: "Plaintext" }, ...arr]);
@@ -133,11 +299,11 @@ function Home() {
       for (var i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
         const reader = new FileReader();
-        reader.readAsText(file);
+        reader.readAsArrayBuffer(file);
         reader.onload = async () => {
           let data = reader.result;
           let tx = await arweave.createTransaction({ data: data }, key);
-          tx.addTag("Content-Type", file.type);
+          tx.addTag("Content-Type", mime.getType(file.name));
 
           await arweave.transactions.sign(tx, key);
 
@@ -151,56 +317,18 @@ function Home() {
             );
           }
 
-          const response = await arweave.transactions.post(tx);
-          if (response.status === 200) {
-            showToastSuccess();
-            setUploadedLinks((arr) => [{ id: tx.id, name: file.name }, ...arr]);
-            setIsFileUploading(false);
-          }
+          console.log(tx);
+
+          getBalance();
+          showToastSuccess();
+          setUploadedLinks((arr) => [{ id: tx.id, name: file.name }, ...arr]);
+          setIsFileUploading(false);
         };
       }
     } catch (e) {
       setIsFileUploading(false);
       showToastError(e);
     }
-  }
-
-  function getBalance() {
-    arweave.wallets.getBalance(globals.arweave.pkey).then((balance) => {
-      let ar = arweave.ar.winstonToAr(balance);
-      setUserBalance(ar);
-    });
-  }
-
-  function setSession(key) {
-    setPrivateKey(key.p);
-    setIsAuthenticated(true);
-    getBalance();
-  }
-
-  function generateWallet() {
-    arweave.wallets.generate().then(async (key) => {
-      console.log(key);
-      globals.arweave.key = key;
-      globals.arweave.pkey = key.p;
-      globals.arweave.address = await arweave.wallets.jwkToAddress(key);
-      setSession(key);
-    });
-  }
-
-  async function loginWithPrivateKey() {
-    const clipboard = await navigator.clipboard.readText();
-    const key = JSON.parse(clipboard);
-    globals.arweave.key = key;
-    globals.arweave.pkey = key.p;
-    globals.arweave.address = await arweave.wallets.jwkToAddress(key);
-    setSession(key);
-  }
-
-  function getWalletFromPrivateKey() {
-    arweave.wallets.jwkToAddress(globals.arweave.key).then((address) => {
-      return address;
-    });
   }
 
   const UnauthenticatedLoginPrompt = () => {
@@ -210,18 +338,49 @@ function Home() {
           <Heading mb={5} textAlign={"center"}>
             ARWeave Client
             <Text fontSize={14} textColor="gray.500">
-              v0.0.1
+              {globals.app.version}
             </Text>
           </Heading>
           <Stack spacing={3}>
-            {/* <Textarea
-              onChange={(e) => {
-                setInputPrivateKey(e.target.value);
-              }}
-              value={inputPrivateKey}
-              placeholder="Private key"
-            /> */}
-            <Button
+            <Box>
+              <Text fontSize={20} fontWeight="bold" mb={2}>
+                Your wallets
+              </Text>
+              <Stack spacing={3} mb={1}>
+                {savedWallets
+                  ? savedWallets.wallets.map((wallet) => {
+                      return (
+                        <Flex>
+                          <Button
+                            w="100%"
+                            colorScheme="green"
+                            onClick={() => {
+                              loginWithKeyObject(JSON.parse(wallet.walletData));
+                            }}
+                            leftIcon={<FontAwesomeIcon icon={faAngleRight} />}
+                          >
+                            Login with [{wallet.walletName}]
+                          </Button>
+                          <Box m={2}>
+                            <FontAwesomeIcon
+                              color="red"
+                              icon={faTrash}
+                              onClick={() =>
+                                deleteWalletNameFromLocalStorage(
+                                  wallet.walletName
+                                )
+                              }
+                            />
+                          </Box>
+                        </Flex>
+                      );
+                    })
+                  : null}
+              </Stack>
+
+              <AddNewWallet />
+            </Box>
+            {/* <Button
               bg="gray.600"
               color="white"
               leftIcon={<FontAwesomeIcon icon={faHandshake} />}
@@ -230,7 +389,8 @@ function Home() {
               }}
             >
               Login to ARWeave network using private key from clipboard
-            </Button>
+            </Button> */}
+            <Text textAlign={"center"}>or</Text>
             <Button
               leftIcon={<FontAwesomeIcon icon={faWallet} />}
               bg="red"
@@ -325,7 +485,7 @@ function Home() {
         <Heading mb={5} textAlign={"center"}>
           ARWeave Client
           <Text fontSize={14} textColor="gray.500">
-            v0.0.1
+            {globals.app.version}
           </Text>
           <Button
             bg="green"
