@@ -3,7 +3,7 @@
 Author: vscorpio\
 Framework: React\
 Version: 0.6.2\
-URL: [https://demo.vscorpio.dev/artools/](https://demo.vscorpio.dev/artools/)
+URL: [https://demo.vscorpio.dev/artools/ ](https://demo.vscorpio.dev/artools/) (commit **fdf57ca**)
 
 
 ## Building instructions
