@@ -1,8 +1,10 @@
 # ARWeave Tools
 
-Author: vscorpio
-Framework: React
-Version: 0.1.0
+Author: vscorpio\
+Framework: React\
+Version: 0.6.2\
+URL: [https://demo.vscorpio.dev/artools/](https://demo.vscorpio.dev/artools/)
+
 
 ## Building instructions
 
