@@ -47,7 +47,11 @@ import {
   faReceipt,
 } from "@fortawesome/free-solid-svg-icons";
 
-const arweave = Arweave.init({});
+const arweave = Arweave.init({
+  host: "arweave.net",
+  port: 443,
+  protocol: "https",
+});
 const mime = require("mime");
 
 var outputLog = "";
