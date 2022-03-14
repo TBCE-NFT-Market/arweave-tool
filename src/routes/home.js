@@ -23,6 +23,7 @@ import {
   ModalFooter,
   Box,
   Textarea,
+  useClipboard,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import { ExternalLinkIcon } from "@chakra-ui/icons";
@@ -43,10 +44,13 @@ import {
   faPlus,
   faTimesCircle,
   faTrash,
+  faReceipt,
 } from "@fortawesome/free-solid-svg-icons";
 
 const arweave = Arweave.init({});
 const mime = require("mime");
+
+var outputLog = "";
 
 function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -61,6 +65,7 @@ function Home() {
   const [fileUploadProgress, setFileUploadProgress] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState(null);
   const [inputPrivateKey, setInputPrivateKey] = useState("");
+  const { hasCopied, onCopy } = useClipboard(outputLog);
 
   const [savedWallets, setSavedWallets] = useState(() => {
     const saved = localStorage.getItem("ARTOOL_WALLETS");
@@ -322,6 +327,8 @@ function Home() {
           getBalance();
           showToastSuccess();
           setUploadedLinks((arr) => [{ id: tx.id, name: file.name }, ...arr]);
+          outputLog += `${file.name} - https://arweave.net/${tx.id} 
+         \n`;
           setIsFileUploading(false);
         };
       }
@@ -503,6 +510,23 @@ function Home() {
             </Box>
           </Button>
         </Heading>
+        <Center>
+          <Button
+            onClick={() => {
+              toast({
+                title: "Output log",
+                description: outputLog,
+                status: "success",
+                duration: 3000,
+                isClosable: true,
+              });
+              onCopy();
+            }}
+            leftIcon={<FontAwesomeIcon icon={faReceipt} />}
+          >
+            {hasCopied ? "Copied" : "Copy output log"}
+          </Button>
+        </Center>
         <Stack spacing={3}>
           <FormControl>
             <FormLabel htmlFor="email">Wallet balance</FormLabel>
@@ -546,6 +570,7 @@ function Home() {
               }}
               p={1}
               type="file"
+              multiple
               placeholder="Lorem ipsum dolor sit amet"
             />
             <Button
