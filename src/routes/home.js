@@ -54,8 +54,6 @@ const arweave = Arweave.init({
 });
 const mime = require("mime");
 
-var outputLog = "";
-
 function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [privateKey, setPrivateKey] = useState("");
@@ -69,7 +67,7 @@ function Home() {
   const [fileUploadProgress, setFileUploadProgress] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState(null);
   const [inputPrivateKey, setInputPrivateKey] = useState("");
-  const { hasCopied, onCopy } = useClipboard(outputLog);
+  const [outputLog, setOutputLog] = useState("");
 
   const [savedWallets, setSavedWallets] = useState(() => {
     const saved = localStorage.getItem("ARTOOL_WALLETS");
@@ -117,10 +115,8 @@ function Home() {
 
   function getBalance() {
     arweave.wallets.getBalance(globals.arweave.address).then((balance) => {
-      console.log(balance);
       let ar = arweave.ar.winstonToAr(balance);
       setUserBalance(ar);
-      console.log(ar);
     });
   }
 
@@ -331,8 +327,11 @@ function Home() {
           getBalance();
           showToastSuccess();
           setUploadedLinks((arr) => [{ id: tx.id, name: file.name }, ...arr]);
-          outputLog += `${file.name} - https://arweave.net/${tx.id} 
-         \n`;
+          setOutputLog(
+            `${file.name} - https://arweave.net/${tx.id} 
+          \n`
+          );
+          console.log(outputLog);
           setIsFileUploading(false);
         };
       }
@@ -517,18 +516,23 @@ function Home() {
         <Center>
           <Button
             onClick={() => {
+              let clipboard = "";
+              uploadedLinks.map((link) => {
+                console.log(link);
+                clipboard += `${link.name} - https://arweave.net/${link.id} \n`;
+              });
               toast({
                 title: "Output log",
-                description: outputLog,
+                description: clipboard,
                 status: "success",
                 duration: 3000,
                 isClosable: true,
               });
-              onCopy();
+              navigator.clipboard.writeText(clipboard);
             }}
             leftIcon={<FontAwesomeIcon icon={faReceipt} />}
           >
-            {hasCopied ? "Copied" : "Copy output log"}
+            Copy output log
           </Button>
         </Center>
         <Stack spacing={3}>
