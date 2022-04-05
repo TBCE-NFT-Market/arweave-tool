@@ -48,9 +48,10 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 const arweave = Arweave.init({
-  host: "arweave.live",
+  host: "arweave.net",
   port: 443,
   protocol: "https",
+  timeout: 50000,
 });
 
 const mime = require("mime");
@@ -77,7 +78,7 @@ function Home() {
   });
 
   const toast = useToast();
-  const host = "arweave.net:443";
+  const host = "arweave.live:443";
 
   useEffect(() => {
     if (inputPrivateKey === "") setButtonDisabled(true);
@@ -278,17 +279,15 @@ function Home() {
         );
       }
 
-      const response = await arweave.transactions.post(tx);
+      // const response = await arweave.transactions.post(tx);
       console.log(tx);
       arweave.transactions.getStatus(tx.id).then((res) => {
         console.log(res);
-      });
-      getBalance();
-      if (response.status === 200) {
         showToastSuccess();
         setUploadedLinks((arr) => [{ id: tx.id, name: "Plaintext" }, ...arr]);
         setIsUploading(false);
-      }
+      });
+      getBalance();
     } catch (e) {
       setIsUploading(false);
       showToastError(e);

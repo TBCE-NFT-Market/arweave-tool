@@ -1,6 +1,6 @@
 let globals = {
   app: {
-    version: "v0.9.0",
+    version: "v0.9.1",
   },
   arweave: {
     key: "",
