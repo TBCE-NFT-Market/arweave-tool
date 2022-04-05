@@ -48,10 +48,11 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 const arweave = Arweave.init({
-  host: "arweave.net",
+  host: "arweave.live",
   port: 443,
   protocol: "https",
 });
+
 const mime = require("mime");
 
 function Home() {
