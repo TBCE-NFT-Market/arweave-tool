@@ -1,6 +1,6 @@
 {
-  "name": "arweave",
-  "version": "0.6.2",
+  "name": "artools",
+  "version": "1.0.0",
   "homepage": ".",
   "private": true,
   "dependencies": {

@@ -303,10 +303,12 @@ function Home() {
     try {
       for (var i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
+        console.log(file);
         const reader = new FileReader();
         reader.readAsArrayBuffer(file);
         reader.onload = async () => {
           let data = reader.result;
+
           let tx = await arweave.createTransaction({ data: data }, key);
           tx.addTag("Content-Type", mime.getType(file.name));
 
@@ -473,6 +475,18 @@ function Home() {
             leftIcon={<FontAwesomeIcon icon={faCopy} />}
             bg={"blue.500"}
             color={"white"}
+            onClick={() => {
+              navigator.clipboard.writeText(
+                "https://arweave.net:443/" + fileId
+              );
+              toast({
+                title: "Copied to clipboard",
+                description: "Link to file has been copied to clipboard",
+                status: "success",
+                duration: 3000,
+                isClosable: true,
+              });
+            }}
           >
             Copy link to clipboard
           </Button>
